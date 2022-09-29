@@ -409,9 +409,9 @@ void tcp_app_init()
 
 // TCP
 #ifdef CONFIG_EXAMPLE_IPV4
-    xTaskCreate(tcp_server_task, "tcp_server", 4096, (void *)AF_INET, 5, NULL);
+    xTaskCreate(tcp_server_task, "tcp_server", 4096, (void *)AF_INET, 6, NULL);
 #endif
 #ifdef CONFIG_EXAMPLE_IPV6
-    xTaskCreate(tcp_server_task, "tcp_server", 4096, (void *)AF_INET6, 5, NULL);
+    xTaskCreate(tcp_server_task, "tcp_server", 4096, (void *)AF_INET6, 6, NULL);
 #endif
 }

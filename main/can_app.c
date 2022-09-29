@@ -82,10 +82,14 @@ void can_init()
     CANRXMessageQueue = xQueueCreate(255, sizeof(transmitBuffer));
     CANTXMessageQueue = xQueueCreate(255, sizeof(struct CANPacket));
     // ~~~~~~~~~~~~~~~ CAN ~~~~~~~~~~~~~~~~~
-    can_general_config_t g_config = CAN_GENERAL_CONFIG_DEFAULT(GPIO_NUM_21, GPIO_NUM_22, CAN_MODE_NORMAL);
+    can_general_config_t g_config = CAN_GENERAL_CONFIG_DEFAULT(GPIO_NUM_27, GPIO_NUM_14, CAN_MODE_NORMAL);
     can_timing_config_t t_config = CAN_TIMING_CONFIG_125KBITS();
     can_filter_config_t f_config = CAN_FILTER_CONFIG_ACCEPT_ALL();
     // Install CAN driver
+
+    // CAN FD 4 Specific Config
+    gpio_set_direction(GPIO_NUM_4, GPIO_MODE_OUTPUT);
+    gpio_set_level(GPIO_NUM_4, 0);
 
     if (can_driver_install(&g_config, &t_config, &f_config) == ESP_OK)
     {
@@ -149,7 +153,7 @@ void can_app_receive(void *pvParameters)
         }
         else
         {
-            vTaskDelay(1 / portTICK_PERIOD_MS);
+            vTaskDelay(10 / portTICK_PERIOD_MS);
         }
 
         // ESP_LOGI(TAG, "Size of twai message %d", sizeof(twai_message_t));
@@ -187,9 +191,11 @@ void can_app_transmit(void *pvParameters)
             }
             message.data_length_code = txCANPacket.DLC;
             memcpy(message.data, txCANPacket.data, 8);
-            if (can_transmit(&message, pdMS_TO_TICKS(100)) != ESP_OK)
+            esp_err_t ret = twai_transmit(&message, pdMS_TO_TICKS(100));
+            if (ret != ESP_OK)
             {
-                printf("Error in message TX\r\n");
+                // ESP_LOG_ERROR(TAG, "Failed to transmit CAN message %d", ret);
+                printf("Error in message TX %d\r\n", ret);
             }
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -210,7 +216,7 @@ void CANToTCP_handler()
 }
 void can_app_init()
 {
-    xTaskCreate(can_app_receive, "can_app_receive", 4096 * 4, NULL, configMAX_PRIORITIES, NULL);
-    xTaskCreate(can_app_transmit, "can_app_transmit", 4096 * 4, NULL, configMAX_PRIORITIES - 1, NULL);
+    xTaskCreate(can_app_receive, "can_app_receive", 4096 * 4, NULL, configMAX_PRIORITIES - 10, NULL);
+    xTaskCreate(can_app_transmit, "can_app_transmit", 4096 * 4, NULL, configMAX_PRIORITIES - 11, NULL);
     xTaskCreate(CANToTCP_handler, "CANToTCP_handler", 4096 * 4, NULL, 5, NULL);
 }
