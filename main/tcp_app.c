@@ -79,7 +79,7 @@ void processPacket(uint8_t *packet, uint8_t packetLength)
                 canPacket.RTR = 0;
                 canPacket.DLC = packet[9];
                 memcpy(canPacket.data, packet + 10, canPacket.DLC);
-                // printf("CAN Packet: ID:%d, IDE:%d, RTR:%d, DLC:%d\r\n", canPacket.ID, canPacket.IDE, canPacket.RTR, canPacket.DLC);
+                // printf("CAN Packet added to queue: ID:%d, IDE:%d, RTR:%d, DLC:%d\r\n", canPacket.ID, canPacket.IDE, canPacket.RTR, canPacket.DLC);
                 xQueueSend(CANTXMessageQueue, &canPacket, 0);
                 return;
             }
@@ -95,13 +95,22 @@ tcp_parser()
     uint8_t packetIDX = 0;
     uint8_t CANPacketCounter = 0;
     enum packetParserStates stateMachine = init;
+    int32_t lastDataReceivedTick = 0;
     while (1)
     {
         if (tcpRXBufferHead != tcpRXBufferTail)
         {
+            uint32_t timestamp = xTaskGetTickCount() * portTICK_PERIOD_MS;
+            if ((packetIDX > 0) && (timestamp - lastDataReceivedTick) > 500) // if we have data in the buffer and we haven't received any data for 300ms
+            {
+                packetIDX = 0;
+                stateMachine = init;
+                // printf("Buffer timeout - Cleared %d - %d!\r\n", lastDataReceivedTick, timestamp);
+            }
+            lastDataReceivedTick = timestamp;
             uint8_t chr = tcpRXBuffer[tcpRXBufferTail];
             tcpRXBufferTail = (tcpRXBufferTail + 1) % tcpRXBufferSize;
-            // printf("p:%d, %d, %d\r\n", chr, tcpRXBufferHead, tcpRXBufferTail);
+            // printf("p:%d, %d, %d, SM:%d, PcktID:%d\r\n", chr, tcpRXBufferHead, tcpRXBufferTail, stateMachine, CANPacketCounter);
             switch (stateMachine)
             {
             case init:
@@ -198,6 +207,7 @@ static void tcp_loop(const int sock)
         if (len < 0)
         {
             ESP_LOGE(TAG, "Error occurred during receiving: errno %d", errno);
+            esp_restart();
         }
         else if (len == 0)
         {

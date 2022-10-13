@@ -197,6 +197,10 @@ void can_app_transmit(void *pvParameters)
                 // ESP_LOG_ERROR(TAG, "Failed to transmit CAN message %d", ret);
                 printf("Error in message TX %d\r\n", ret);
             }
+            else
+            {
+                // printf("CAN Message transmited\r\n");
+            }
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
