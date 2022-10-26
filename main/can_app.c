@@ -87,9 +87,11 @@ void can_init()
     can_filter_config_t f_config = CAN_FILTER_CONFIG_ACCEPT_ALL();
     // Install CAN driver
 
-    // CAN FD 4 Specific Config
+    // CAN FD 4 board Specific Config
     gpio_set_direction(GPIO_NUM_4, GPIO_MODE_OUTPUT);
     gpio_set_level(GPIO_NUM_4, 0);
+    gpio_set_direction(GPIO_NUM_16, GPIO_MODE_OUTPUT);
+    gpio_set_level(GPIO_NUM_16, 0);
 
     if (can_driver_install(&g_config, &t_config, &f_config) == ESP_OK)
     {
@@ -150,6 +152,7 @@ void can_app_receive(void *pvParameters)
             transmitBuffer[19] = (timestamp >> 16) & 0xFF; // Timestamp
             transmitBuffer[20] = (timestamp >> 24) & 0xFF; // Timestamp MSB
             xQueueSend(CANRXMessageQueue, &transmitBuffer, 0);
+            // printf("Message received");
         }
         else
         {
@@ -164,9 +167,6 @@ void can_app_receive(void *pvParameters)
 }
 void can_app_transmit(void *pvParameters)
 {
-
-    can_init();
-
     can_message_t message;
     message.identifier = 0xAAAA;
     message.flags = CAN_MSG_FLAG_EXTD;
@@ -199,7 +199,7 @@ void can_app_transmit(void *pvParameters)
             }
             else
             {
-                // printf("CAN Message transmited\r\n");
+                printf("CAN Message transmited\r\n");
             }
         }
         vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -220,7 +220,8 @@ void CANToTCP_handler()
 }
 void can_app_init()
 {
-    xTaskCreate(can_app_receive, "can_app_receive", 4096 * 4, NULL, configMAX_PRIORITIES - 10, NULL);
-    xTaskCreate(can_app_transmit, "can_app_transmit", 4096 * 4, NULL, configMAX_PRIORITIES - 11, NULL);
-    xTaskCreate(CANToTCP_handler, "CANToTCP_handler", 4096 * 4, NULL, 5, NULL);
+    can_init();
+    xTaskCreate(can_app_receive, "can_app_receive", 4096 * 4, NULL, tskIDLE_PRIORITY + 7, NULL);
+    xTaskCreate(CANToTCP_handler, "CANToTCP_handler", 4096 * 4, NULL, tskIDLE_PRIORITY + 6, NULL);
+    xTaskCreate(can_app_transmit, "can_app_transmit", 4096 * 4, NULL, tskIDLE_PRIORITY + 5, NULL);
 }

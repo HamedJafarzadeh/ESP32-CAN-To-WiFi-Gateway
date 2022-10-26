@@ -367,7 +367,7 @@ static void tcp_server_task(void *pvParameters)
         goto CLEAN_UP;
     }
 
-    xTaskCreate(tcp_parser, "tcp_parser", 4096, (void *)NULL, tskIDLE_PRIORITY, NULL);
+    xTaskCreate(tcp_parser, "tcp_parser", 4096, (void *)NULL, tskIDLE_PRIORITY + 1, NULL);
 
     while (1)
     {
@@ -400,7 +400,7 @@ static void tcp_server_task(void *pvParameters)
         }
 #endif
         ESP_LOGI(TAG, "Socket accepted ip address: %s", addr_str);
-        xTaskCreate(tcp_heartbeat, "tcp_heartbeat", 4096, (void *)NULL, 5, NULL);
+        xTaskCreate(tcp_heartbeat, "tcp_heartbeat", 4096, (void *)NULL, tskIDLE_PRIORITY + 2, NULL);
         tcp_loop(sock);
 
         shutdown(sock, 0);
@@ -412,6 +412,50 @@ CLEAN_UP:
     vTaskDelete(NULL);
 }
 
+static void deviceStatus(void *pvParameters)
+{
+    char ptrTaskList[250];
+    twai_status_info_t can_status_info;
+
+    while (1)
+    {
+        can_get_status_info(&can_status_info);
+        printf("System Status:\r\n");
+        printf("CAN Status : \r\n");
+        switch (can_status_info.state)
+        {
+        case CAN_STATE_STOPPED:
+            printf("Stopped\r\n");
+            break;
+        case CAN_STATE_RUNNING:
+            printf("Running\r\n");
+            break;
+        case CAN_STATE_BUS_OFF:
+            printf("Bus Off\r\n");
+            break;
+        case CAN_STATE_RECOVERING:
+            printf("Recovering\r\n");
+            break;
+        }
+        printf("CAN Bus Error: %d\r\n", can_status_info.bus_error_count);
+        printf("CAN Tx Error Counter: %d\r\n", can_status_info.tx_error_counter);
+        printf("CAN Rx Error Counter: %d\r\n", can_status_info.rx_error_counter);
+        printf("CAN tx_failed_count: %d\r\n", can_status_info.tx_failed_count);
+        printf("CAN Tx Queue Length: %d\r\n", can_status_info.msgs_to_tx);
+        printf("CAN Rx Queue Length: %d\r\n", can_status_info.msgs_to_rx);
+        printf("CAN Tx Queue Overflow: %d\r\n", can_status_info.rx_overrun_count);
+
+        // vTaskList(ptrTaskList);
+        // printf("**********************************\r\n");
+        // printf("Task  State   Prio    Stack    Num");
+        // printf("**********************************\r\n");
+        // printf(ptrTaskList);
+        // printf("**********************************\r\n");
+
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
+    }
+}
+
 void tcp_app_init()
 {
     ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
@@ -419,9 +463,7 @@ void tcp_app_init()
 
 // TCP
 #ifdef CONFIG_EXAMPLE_IPV4
-    xTaskCreate(tcp_server_task, "tcp_server", 4096, (void *)AF_INET, 6, NULL);
+    xTaskCreate(tcp_server_task, "tcp_server", 4096, (void *)AF_INET, tskIDLE_PRIORITY + 3, NULL);
 #endif
-#ifdef CONFIG_EXAMPLE_IPV6
-    xTaskCreate(tcp_server_task, "tcp_server", 4096, (void *)AF_INET6, 6, NULL);
-#endif
+    xTaskCreate(deviceStatus, "deviceStatus", 4096, (void *)AF_INET6, tskIDLE_PRIORITY, NULL);
 }

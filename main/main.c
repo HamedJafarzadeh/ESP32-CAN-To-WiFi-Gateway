@@ -72,7 +72,7 @@ void UART_init(void)
     uart_driver_install(UART_NUM_1, RX_BUF_SIZE * 2, 0, 0, NULL, 0);
     uart_param_config(UART_NUM_1, &uart_config);
     uart_set_pin(UART_NUM_1, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-    xTaskCreate(UART_rx_task, "uart_rx_task", 1024 * 2, NULL, configMAX_PRIORITIES - 12, NULL);
+    // xTaskCreate(UART_rx_task, "uart_rx_task", 1024 * 2, NULL, tskIDLE_PRIORITY + 4, NULL);
 }
 
 int UART_sendData(const char *logName, const char *data)
